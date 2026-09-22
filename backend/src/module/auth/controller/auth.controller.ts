@@ -16,9 +16,21 @@ import { CurrentUser } from '../decorator/auth.decorator';
 import { UserEntity } from '../../user/infrastructure/entity/user.entity';
 import { AuthMapper } from '../mapper/auth.mapper';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private getCookieOptions(maxAge?: number, path?: string) {
+    return {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+      ...(maxAge ? { maxAge } : {}),
+      ...(path ? { path } : {}),
+    };
+  }
 
   @Post('register')
   async register(
@@ -27,19 +39,16 @@ export class AuthController {
   ) {
     const domain = AuthMapper.fromDto(dto);
     const tokens = await this.authService.register(domain);
-    res.cookie('accessToken', tokens.accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000,
-    });
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+    res.cookie(
+      'accessToken',
+      tokens.accessToken,
+      this.getCookieOptions(15 * 60 * 1000),
+    );
+    res.cookie(
+      'refreshToken',
+      tokens.refreshToken,
+      this.getCookieOptions(7 * 24 * 60 * 60 * 1000, '/'),
+    );
 
     return tokens;
   }
@@ -50,20 +59,16 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const tokens = await this.authService.login(dto);
-    res.cookie('accessToken', tokens.accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+    res.cookie(
+      'accessToken',
+      tokens.accessToken,
+      this.getCookieOptions(15 * 60 * 1000),
+    );
+    res.cookie(
+      'refreshToken',
+      tokens.refreshToken,
+      this.getCookieOptions(7 * 24 * 60 * 60 * 1000, '/'),
+    );
 
     return tokens;
   }
@@ -76,8 +81,8 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken', { path: '/' });
+    res.clearCookie('accessToken', this.getCookieOptions());
+    res.clearCookie('refreshToken', this.getCookieOptions(undefined, '/'));
     return { message: 'Logged out successfully' };
   }
 
@@ -92,19 +97,16 @@ export class AuthController {
       req.cookies.refreshToken,
     );
 
-    res.cookie('accessToken', tokens.accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000,
-    });
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
+    res.cookie(
+      'accessToken',
+      tokens.accessToken,
+      this.getCookieOptions(15 * 60 * 1000),
+    );
+    res.cookie(
+      'refreshToken',
+      tokens.refreshToken,
+      this.getCookieOptions(7 * 24 * 60 * 60 * 1000, '/'),
+    );
     return tokens;
   }
 }

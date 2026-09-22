@@ -7,7 +7,7 @@ import { MailService } from './module/mail/service/mail.service';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors({
-    origin: '*',
+    origin: true,
     credentials: true,
   });
   app.useGlobalPipes(
